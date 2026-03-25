@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>1日の時間分析ツール — hsummer.calc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface2: #f0ede8;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.14);
+    --text-primary: #1a1a18;
+    --text-secondary: #6b6860;
+    --text-muted: #a09d99;
+    --accent: #2d5a3d;
+    --accent-light: #e8f2eb;
+    --danger: #c94040;
+    --danger-light: #fdeaea;
+    --success: #2d7a4f;
+    --success-light: #e8f7ef;
+    --warn: #b06a00;
+    --warn-light: #fdf3e3;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 0 0 4rem;
+  }
+  .site-header {
+    background: #1a1816;
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0;
+  }
+  .site-logo { font-family:'DM Mono',monospace; font-size:14px; color:#fff; text-decoration:none; }
+  .site-logo span { color:rgba(255,255,255,0.3); }
+  .site-back { font-size:12px; color:rgba(255,255,255,0.4); text-decoration:none; display:flex; align-items:center; gap:6px; transition:color .15s; }
+  .site-back:hover { color:rgba(255,255,255,0.85); }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 2rem;
+  }
+
+  header .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  header p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    line-height: 1.6;
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  /* ── Summary row ── */
+  .summary-row {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .donut-wrap {
+    flex-shrink: 0;
+    position: relative;
+    width: 164px;
+    height: 164px;
+  }
+
+  .donut-wrap canvas { display: block; }
+
+  .donut-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .donut-center .free-hours {
+    font-family: 'DM Mono', monospace;
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .donut-center .free-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .stat-item {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 0.8rem 1rem;
+  }
+
+  .stat-item .s-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .stat-item .s-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .stat-item .s-unit {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ── Bar ── */
+  .bar-wrap { margin-bottom: 0.25rem; }
+
+  .bar-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .bar-track {
+    width: 100%;
+    height: 10px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+    display: flex;
+  }
+
+  .bar-seg {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+
+  /* ── Status badge ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 99px;
+    margin-bottom: 1rem;
+    font-weight: 500;
+  }
+
+  .badge.ok   { background: var(--success-light); color: var(--success); }
+  .badge.warn { background: var(--warn-light);    color: var(--warn); }
+  .badge.danger { background: var(--danger-light); color: var(--danger); }
+
+  /* ── Section ── */
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 0.5rem 0 0.3rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.6rem;
+    margin-top: 1.2rem;
+  }
+
+  .section-label:first-of-type { margin-top: 0; }
+
+  /* ── Activity row ── */
+  .activity-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+  }
+
+  .activity-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .activity-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    width: 120px;
+    flex-shrink: 0;
+    line-height: 1.3;
+  }
+
+  .activity-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 99px;
+    background: var(--surface2);
+    outline: none;
+    cursor: pointer;
+    border: none;
+  }
+
+  .activity-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--border-strong);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .activity-row input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  .activity-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    width: 38px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ── Tips ── */
+  .tips-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.55;
+  }
+
+  .tip-item:last-child { border-bottom: none; }
+
+  .tip-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  .tip-saving {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--success-light);
+    color: var(--success);
+    white-space: nowrap;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 560px) {
+    .summary-row { flex-direction: column; align-items: flex-start; gap: 1.25rem; }
+    .donut-wrap { width: 140px; height: 140px; }
+    .donut-center .free-hours { font-size: 26px; }
+    .activity-name { width: 90px; font-size: 12px; }
+    header h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="site-header">
+  <a class="site-logo" href="index.html">hsummer<span>.calc</span></a>
+  <a class="site-back" href="index.html">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    ツール一覧へ
+  </a>
+</div>
+
+<div class="container" style="padding: 2rem 1rem 0;">
+
+  <header>
+    <div class="eyebrow">Time Analyzer</div>
+    <h1>1日の時間分析ツール</h1>
+    <p>各スライダーを動かして、あなたの1日の時間配分を調整してください。<br>自由時間と時間を確保するヒントがリアルタイムで変わります。</p>
+  </header>
+
+  <!-- Summary card -->
+  <div class="card">
+    <div class="summary-row">
+      <div class="donut-wrap">
+        <canvas id="donutChart" width="164" height="164"></canvas>
+        <div class="donut-center">
+          <div class="free-hours" id="freeNum">0</div>
+          <div class="free-label">自由時間 (h)</div>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="s-label">必須時間の合計</div>
+          <div class="s-value" id="fixedNum">0</div>
+          <div class="s-unit">時間 / 日</div>
+        </div>
+        <div class="stat-item">
+          <div class="s-label">自由時間</div>
+          <div class="s-value" id="freeNum2">0</div>
+          <div class="s-unit">時間 / 日</div>
+        </div>
+        <div class="stat-item">
+          <div class="s-label">週の自由時間</div>
+          <div class="s-value" id="weekFree">0</div>
+          <div class="s-unit">時間 / 週</div>
+        </div>
+        <div class="stat-item">
+          <div class="s-label">自由時間の割合</div>
+          <div class="s-value" id="freePct">0%</div>
+          <div class="s-unit">1日の中で</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend" id="legendArea"></div>
+  </div>
+
+  <!-- Bar card -->
+  <div class="card">
+    <div class="bar-wrap">
+      <div class="bar-label-row">
+        <span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span>
+      </div>
+      <div class="bar-track" id="barTrack"></div>
+    </div>
+    <div style="margin-top: 1rem;">
+      <div id="statusBadge"></div>
+    </div>
+  </div>
+
+  <!-- Sliders card -->
+  <div class="card">
+    <div id="activitiesContainer"></div>
+  </div>
+
+  <!-- Tips card -->
+  <div class="card">
+    <div class="tips-title">💡 時間を確保するためのヒント</div>
+    <div id="tipsList"></div>
+  </div>
+
+</div>
+
+<script>
+const SECTIONS = [
+  {
+    label: '基本の生活',
+    activities: [
+      { id: 'sleep',    name: '睡眠',              default: 7,   min: 4,   max: 10,  step: 0.5, color: '#5DCAA5' },
+      { id: 'meals',    name: '食事・身支度',       default: 1.5, min: 0.5, max: 3,   step: 0.5, color: '#EF9F27' },
+    ]
+  },
+  {
+    label: '仕事・移動',
+    activities: [
+      { id: 'work',     name: '仕事',               default: 9,   min: 4,   max: 12,  step: 0.5, color: '#7F77DD' },
+      { id: 'commute',  name: '通勤・移動',         default: 1.5, min: 0,   max: 4,   step: 0.5, color: '#D4537E' },
+    ]
+  },
+  {
+    label: '育児・家事',
+    activities: [
+      { id: 'pickup',   name: '送り迎え',           default: 1,   min: 0,   max: 3,   step: 0.5, color: '#378ADD' },
+      { id: 'park',     name: '公園・外遊び',        default: 1,   min: 0,   max: 3,   step: 0.5, color: '#63C464' },
+      { id: 'bath',     name: 'お風呂・寝かしつけ', default: 1,   min: 0.5, max: 2.5, step: 0.5, color: '#9FE1CB' },
+      { id: 'chores',   name: '家事全般',            default: 1,   min: 0,   max: 3,   step: 0.5, color: '#F0997B' },
+      { id: 'shopping', name: 'スーパー・買い物',    default: 1,   min: 0,   max: 3,   step: 0.5, color: '#B5D4F4' },
+    ]
+  },
+  {
+    label: 'スクリーン・余暇',
+    activities: [
+      { id: 'phone',    name: 'スマホ・SNS',        default: 1.5, min: 0,   max: 5,   step: 0.5, color: '#E24B4A' },
+      { id: 'tv',       name: 'TV・動画',            default: 1,   min: 0,   max: 4,   step: 0.5, color: '#AFA9EC' },
+    ]
+  },
+];
+
+const ALL_ACTIVITIES = SECTIONS.flatMap(s => s.activities);
+let values = {};
+ALL_ACTIVITIES.forEach(a => { values[a.id] = a.default; });
+
+function getTotal() { return ALL_ACTIVITIES.reduce((s, a) => s + values[a.id], 0); }
+function getFree()  { return Math.max(0, 24 - getTotal()); }
+
+/* ── Chart ── */
+let donutChart;
+function initChart() {
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: [...ALL_ACTIVITIES.map(a => a.name), '自由時間'],
+      datasets: [{
+        data: [...ALL_ACTIVITIES.map(a => values[a.id]), getFree()],
+        backgroundColor: [...ALL_ACTIVITIES.map(a => a.color), '#c8e6d4'],
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        hoverOffset: 0,
+      }]
+    },
+    options: {
+      responsive: false,
+      cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      animation: { duration: 250 }
+    }
+  });
+}
+
+function updateChart() {
+  const over = getTotal() > 24;
+  donutChart.data.datasets[0].data = [...ALL_ACTIVITIES.map(a => values[a.id]), over ? 0 : getFree()];
+  donutChart.data.datasets[0].backgroundColor = [...ALL_ACTIVITIES.map(a => a.color), over ? '#f7c1c1' : '#c8e6d4'];
+  donutChart.update();
+}
+
+/* ── Legend ── */
+function buildLegend() {
+  const area = document.getElementById('legendArea');
+  area.innerHTML = '';
+  ALL_ACTIVITIES.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'legend-item';
+    el.innerHTML = `<div class="legend-dot" style="background:${a.color}"></div><span>${a.name}</span>`;
+    area.appendChild(el);
+  });
+  const el = document.createElement('div');
+  el.className = 'legend-item';
+  el.innerHTML = `<div class="legend-dot" style="background:#c8e6d4"></div><span>自由時間</span>`;
+  area.appendChild(el);
+}
+
+/* ── Sliders ── */
+function buildActivities() {
+  const container = document.getElementById('activitiesContainer');
+  container.innerHTML = '';
+  SECTIONS.forEach((sec, si) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'section-label';
+    lbl.textContent = sec.label;
+    container.appendChild(lbl);
+
+    sec.activities.forEach(a => {
+      const row = document.createElement('div');
+      row.className = 'activity-row';
+      row.innerHTML = `
+        <div class="activity-dot" style="background:${a.color}"></div>
+        <div class="activity-name">${a.name}</div>
+        <input type="range" min="${a.min}" max="${a.max}" step="${a.step}" value="${values[a.id]}" data-id="${a.id}" />
+        <div class="activity-val" id="val-${a.id}">${values[a.id]}h</div>
+      `;
+      container.appendChild(row);
+      row.querySelector('input').addEventListener('input', function() {
+        values[this.dataset.id] = parseFloat(this.value);
+        document.getElementById('val-' + this.dataset.id).textContent = parseFloat(this.value) + 'h';
+        updateAll();
+      });
+    });
+  });
+}
+
+/* ── Bar ── */
+function updateBar() {
+  const track = document.getElementById('barTrack');
+  track.innerHTML = '';
+  ALL_ACTIVITIES.forEach(a => {
+    const seg = document.createElement('div');
+    seg.className = 'bar-seg';
+    seg.style.width = ((values[a.id] / 24) * 100).toFixed(1) + '%';
+    seg.style.background = a.color;
+    track.appendChild(seg);
+  });
+  const freeW = Math.max(0, (getFree() / 24) * 100).toFixed(1);
+  const freeSeg = document.createElement('div');
+  freeSeg.className = 'bar-seg';
+  freeSeg.style.width = freeW + '%';
+  freeSeg.style.background = getTotal() > 24 ? '#f7c1c1' : '#c8e6d4';
+  track.appendChild(freeSeg);
+}
+
+/* ── Stats & badge ── */
+function updateStats() {
+  const free  = getFree();
+  const total = getTotal();
+  document.getElementById('freeNum').textContent  = free.toFixed(1);
+  document.getElementById('freeNum2').textContent = free.toFixed(1);
+  document.getElementById('fixedNum').textContent = Math.min(total, 24).toFixed(1);
+  document.getElementById('weekFree').textContent = (free * 7).toFixed(0);
+  document.getElementById('freePct').textContent  = Math.round((free / 24) * 100) + '%';
+
+  const badge = document.getElementById('statusBadge');
+  if (total > 24) {
+    badge.innerHTML = `<span class="badge danger">⚠ 1日${total.toFixed(1)}時間 — ${(total - 24).toFixed(1)}時間オーバーしています</span>`;
+  } else if (free < 1) {
+    badge.innerHTML = `<span class="badge danger">⚠ 自由時間がほぼゼロです。見直しが必要です</span>`;
+  } else if (free < 2) {
+    badge.innerHTML = `<span class="badge warn">△ 自由時間が少なめです。余裕をつくりましょう</span>`;
+  } else if (free >= 4) {
+    badge.innerHTML = `<span class="badge ok">◎ ゆとりある1日の構成です</span>`;
+  } else {
+    badge.innerHTML = `<span class="badge ok">○ バランスの取れた構成です</span>`;
+  }
+}
+
+/* ── Tips ── */
+function buildTips() {
+  const tipsList = document.getElementById('tipsList');
+  tipsList.innerHTML = '';
+  const tips = [];
+
+  if (values['phone'] >= 1.5)   tips.push({ icon: '📵', text: `スマホ利用${values['phone']}h → 1hに減らすと${(values['phone']-1).toFixed(1)}h確保`, saving: values['phone'] - 1 });
+  if (values['shopping'] >= 1)  tips.push({ icon: '🛒', text: 'ネットスーパー・生協に切り替えると買い物時間をほぼゼロに', saving: 0.75 });
+  if (values['commute'] >= 1.5) tips.push({ icon: '🏠', text: `テレワーク週1日追加で往復${values['commute'].toFixed(1)}h節約`, saving: values['commute'] });
+  if (values['pickup'] >= 1)    tips.push({ icon: '🚗', text: 'ご近所との送迎シェアで隔日に分担できます', saving: 0.5 });
+  if (values['chores'] >= 1.5)  tips.push({ icon: '🤖', text: '食洗機・ロボット掃除機で家事を自動化', saving: 0.5 });
+  if (values['bath'] >= 1.5)    tips.push({ icon: '🛁', text: '入浴・寝かしつけをパートナーと交代制に', saving: 0.5 });
+  if (values['tv'] >= 1.5)      tips.push({ icon: '📺', text: 'テレビ・動画は倍速視聴で時間を半分に', saving: +(values['tv'] * 0.4).toFixed(1) });
+  if (values['meals'] >= 2)     tips.push({ icon: '🍱', text: '週末ミールプレップで平日の食事準備を短縮', saving: 0.5 });
+  if (values['work'] >= 10)     tips.push({ icon: '⚡', text: '集中ブロック（ポモドーロ）で業務効率化 → 退勤30分短縮', saving: 0.5 });
+  if (values['park'] >= 1.5)    tips.push({ icon: '🌳', text: '週末にまとめて長めの外遊びで平日の公園時間を短縮', saving: 0.5 });
+  tips.push({ icon: '✨', text: '週1回「何もしない時間」をスケジュールに入れる — 燃え尽き予防', saving: 0 });
+
+  tips.slice(0, 6).forEach(tip => {
+    const item = document.createElement('div');
+    item.className = 'tip-item';
+    item.innerHTML = `
+      <span class="tip-icon">${tip.icon}</span>
+      <span>${tip.text}</span>
+      ${tip.saving > 0 ? `<span class="tip-saving">+${tip.saving.toFixed(1)}h</span>` : ''}
+    `;
+    tipsList.appendChild(item);
+  });
+}
+
+function updateAll() {
+  updateStats();
+  updateBar();
+  updateChart();
+  buildTips();
+}
+
+buildActivities();
+buildLegend();
+initChart();
+updateAll();
+</script>
+</body>
+</html>
