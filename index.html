@@ -884,6 +884,10 @@ function selectType(type, el) {
 }
 
 // ---- Google Sign-in ----
+function handleCredential(response) {
+  // placeholder for GSI callback
+}
+
 function initGSI() {
   if (typeof google === 'undefined') return;
   google.accounts.id.initialize({
@@ -911,7 +915,6 @@ function signIn() {
 function initCalendarStep() {
   // Check if GSI is ready
   if (typeof google !== 'undefined' && CONFIG.CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
-    initGSI();
     // Try silent token first
     const client = google.accounts.oauth2.initTokenClient({
       client_id: CONFIG.CLIENT_ID,
