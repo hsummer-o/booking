@@ -155,7 +155,20 @@
       margin-bottom: 4px;
     }
 
-    .type-sub { font-size: 11px; color: var(--fg2); }
+    .type-sub { font-size: 11px; color: var(--fg2); margin-bottom: 6px; }
+    .type-price { font-size: 12px; color: var(--fg2); display: block; margin-top: 8px; border-top: 1px solid rgba(0,0,0,0.07); padding-top: 7px; letter-spacing: 0.03em; }
+    .type-btn.selected .type-price { color: rgba(255,255,255,0.55); border-top-color: rgba(255,255,255,0.2); }
+    .type-btn-wide { grid-column: 1 / -1; }
+    .price-note {
+      font-size: 12px;
+      color: var(--fg2);
+      line-height: 1.7;
+      background: var(--bg2);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .price-note span { margin-right: 4px; }
 
     /* Calendar */
     .gcal-status {
@@ -243,7 +256,6 @@
     .day-cell.empty { cursor: default; }
 
     .day-cell.past,
-    .day-cell.sunday { color: var(--fg3); cursor: default; }
 
     .day-cell.available {
       cursor: pointer;
@@ -578,6 +590,60 @@
       margin-bottom: 24px;
     }
 
+    .time-consult-btn {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 11px;
+      border: 1px dashed var(--border2);
+      border-radius: var(--radius);
+      background: none;
+      font-size: 13px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 300;
+      cursor: pointer;
+      color: var(--fg2);
+      transition: all 0.15s;
+    }
+    .time-consult-btn:hover { border-color: var(--fg); color: var(--fg); background: var(--bg2); }
+    .time-consult-btn.consult-selected { border-style: solid; border-color: var(--fg); color: var(--fg); background: var(--bg2); font-weight: 400; }
+    .time-consult-note { font-size: 11px; color: var(--fg3); margin-top: 6px; line-height: 1.6; }
+
+    .success-steps {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 24px 0;
+      flex-wrap: wrap;
+    }
+    .success-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      text-align: center;
+    }
+    .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--fg);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+    .success-step-pending .step-num {
+      background: var(--bg2);
+      color: var(--fg2);
+      border: 1px solid var(--border);
+    }
+    .step-text { font-size: 12px; color: var(--fg2); line-height: 1.5; }
+    .step-text small { font-size: 10px; color: var(--fg3); display: block; }
+    .success-arrow { font-size: 14px; color: var(--fg3); margin-top: -16px; }
+
     @media (max-width: 480px) {
       .type-grid { grid-template-columns: 1fr; }
       .form-row { grid-template-columns: 1fr; }
@@ -624,19 +690,32 @@
       <button class="type-btn" onclick="selectType('七五三', this)">
         <span class="type-title">七五三</span>
         <span class="type-sub">3歳・5歳・7歳のお参り</span>
+        <span class="type-price">¥30,000 / 1時間〜</span>
       </button>
       <button class="type-btn" onclick="selectType('お宮参り', this)">
         <span class="type-title">お宮参り</span>
         <span class="type-sub">生後1ヶ月頃の神社参拝</span>
+        <span class="type-price">¥30,000 / 1時間〜</span>
       </button>
       <button class="type-btn" onclick="selectType('ニューボーン', this)">
         <span class="type-title">ニューボーン</span>
         <span class="type-sub">生後2〜3週間</span>
+        <span class="type-price">¥30,000 / 1時間〜</span>
       </button>
       <button class="type-btn" onclick="selectType('家族写真', this)">
         <span class="type-title">家族写真</span>
         <span class="type-sub">ご家族のポートレート</span>
+        <span class="type-price">¥30,000 / 1時間〜</span>
       </button>
+      <button class="type-btn type-btn-wide" onclick="selectType('その他・ご相談', this)">
+        <span class="type-title">その他・ご相談</span>
+        <span class="type-sub">内容・料金等、お気軽にご相談ください</span>
+      </button>
+    </div>
+    <div class="price-note">
+      <span>&#9432;</span>
+      撮影料金は時間制（¥30,000 / 1時間）です。2枠ご予約の場合は¥60,000となります。<br>
+      撮影時間・枠数はご予約確定時にご相談いただけます。
     </div>
     <button class="btn-primary" id="btn-1" onclick="goStep(2)" disabled>次へ</button>
   </div>
@@ -682,6 +761,10 @@
       <div class="time-section" id="time-section">
         <p class="section-title" id="time-label"></p>
         <div class="time-grid" id="time-grid"></div>
+        <button class="time-consult-btn" id="time-consult-btn" onclick="selectConsultTime(this)">
+          この日の別の時間をご相談
+        </button>
+        <p class="time-consult-note">ご希望の時間帯が上記にない場合はこちらを選択し、備考欄にご記入ください。</p>
       </div>
     </div>
 
@@ -801,13 +884,27 @@
   <div class="panel" id="panel-5">
     <div class="success-wrap">
       <div class="success-icon">✓</div>
-      <h2 class="success-title">送信完了</h2>
+      <h2 class="success-title">仮予約を受け付けました</h2>
       <p class="success-body">
-        予約リクエストを受け付けました。<br>
         <strong id="confirm-email" style="font-weight:400;"></strong> 宛に<br>
-        確認メールをお送りしました。<br><br>
-        2営業日以内にご連絡いたします。
+        仮予約の確認メールをお送りしました。
       </p>
+      <div class="success-steps">
+        <div class="success-step">
+          <span class="step-num">1</span>
+          <span class="step-text">仮予約受付<br><small>確認メールを送信済み</small></span>
+        </div>
+        <div class="success-arrow">→</div>
+        <div class="success-step">
+          <span class="step-num">2</span>
+          <span class="step-text">内容確認<br><small>2営業日以内</small></span>
+        </div>
+        <div class="success-arrow">→</div>
+        <div class="success-step success-step-pending">
+          <span class="step-num">3</span>
+          <span class="step-text">予約確定メール<br><small>送付をもって確定</small></span>
+        </div>
+      </div>
       <p class="contact-note">
         お急ぎの場合はインスタグラム（@harin_photo）よりDMください。
       </p>
@@ -900,7 +997,7 @@ function initGSI() {
 function signIn() {
   const client = google.accounts.oauth2.initTokenClient({
     client_id: CONFIG.CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+    scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.send',
     callback: (resp) => {
       if (resp.error) { showStatus('error', 'サインインに失敗しました'); return; }
       gToken = resp.access_token;
@@ -918,7 +1015,7 @@ function initCalendarStep() {
     // Try silent token first
     const client = google.accounts.oauth2.initTokenClient({
       client_id: CONFIG.CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+      scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.send',
       prompt: '',
       callback: (resp) => {
         if (resp.error) {
@@ -1011,7 +1108,7 @@ function loadDemoData() {
   [2,5,9,13,17].forEach(offset => {
     const d = new Date(today);
     d.setDate(d.getDate() + offset);
-    if (d.getDay()===0) return;
+    // すべての曜日が撮影可能
     const key = toDateKey(d);
     busyMap[key] = offset % 2 === 0 ? [9,10] : 'allday';
   });
@@ -1042,7 +1139,6 @@ function renderCalendar() {
   for (let d=1; d<=daysInMonth; d++) {
     const cellDate = new Date(year, month, d);
     const key = toDateKey(cellDate);
-    const isSun = cellDate.getDay()===0;
     const isPast = cellDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const isTooFar = cellDate > maxDate;
     const isSelected = key === state.selectedDate;
@@ -1051,7 +1147,7 @@ function renderCalendar() {
     let cls = 'day-cell';
     let dot = '';
 
-    if (isPast || isSun || isTooFar) {
+    if (isPast || isTooFar) {
       cls += ' past';
     } else if (busy === 'allday') {
       cls += ' busy-full';
@@ -1070,7 +1166,7 @@ function renderCalendar() {
     if (isSelected) cls += ' selected';
     if (key === todayKey) cls += ' today';
 
-    const clickable = !isPast && !isSun && !isTooFar && busy !== 'allday' &&
+    const clickable = !isPast && !isTooFar && busy !== 'allday' &&
                       !(busy && busy.length >= CONFIG.AVAILABLE_HOURS.length);
     html += `<div class="${cls}" ${clickable?`onclick="selectDate('${key}',${cellDate.getDay()})"`:''}>${d}${dot}</div>`;
   }
@@ -1082,6 +1178,8 @@ function selectDate(key, dow) {
   state.selectedDate = key;
   state.selectedTime = null;
   document.getElementById('btn-2').disabled = true;
+  const consultBtn = document.getElementById('time-consult-btn');
+  if (consultBtn) consultBtn.classList.remove('consult-selected');
   renderCalendar();
 
   const parts = key.split('-');
@@ -1099,7 +1197,17 @@ function selectDate(key, dow) {
   document.getElementById('time-section').style.display = 'block';
 }
 
+function selectConsultTime(el) {
+  state.selectedTime = 'ご相談希望';
+  document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('consult-selected');
+  document.getElementById('btn-2').disabled = false;
+}
+
 function selectTime(time, el) {
+  // Reset consult button if previously selected
+  const consultBtn = document.getElementById('time-consult-btn');
+  if (consultBtn) consultBtn.classList.remove('consult-selected');
   state.selectedTime = time;
   document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
@@ -1114,6 +1222,8 @@ function changeMonth(dir) {
   state.selectedTime = null;
   document.getElementById('time-section').style.display = 'none';
   document.getElementById('btn-2').disabled = true;
+  const consultBtn = document.getElementById('time-consult-btn');
+  if (consultBtn) consultBtn.classList.remove('consult-selected');
   renderCalendar();
 }
 
@@ -1195,6 +1305,8 @@ async function submitBooking() {
       );
       if (!res.ok) throw new Error('Calendar API error');
     }
+    // Send confirmation email to client via mailto fallback
+    sendClientEmail(email, name);
     // Success
     document.getElementById('confirm-email').textContent = email;
     goStep(5);
@@ -1204,6 +1316,107 @@ async function submitBooking() {
     const err = document.getElementById('submit-error');
     err.style.display = 'block';
     err.textContent = '送信に失敗しました。お手数ですが、インスタグラムよりご連絡ください。';
+  }
+}
+
+// ---- Email notifications via Gmail API ----
+async function sendClientEmail(clientEmail, clientName) {
+  if (!gToken) return;
+
+  const parts = state.selectedDate.split('-');
+  const dateStr = parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日';
+  const age = document.getElementById('f-age').value;
+  const count = document.getElementById('f-count').value;
+  const note = document.getElementById('f-note').value;
+
+  const hours = parseInt(state.selectedTime.split(':')[0]);
+  const endHours = hours + CONFIG.DURATION_MINUTES / 60;
+  const timeStr = state.selectedTime + '〜' + endHours + ':00';
+
+  // Client confirmation email
+  const clientSubject = '【仮予約受付】撮影のご予約リクエストを承りました | harin photo';
+  const clientBody =
+`${clientName} 様
+
+この度はharin photoへご予約リクエストをいただき、誠にありがとうございます。
+以下の内容で仮予約を承りました。
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+　ご予約内容
+━━━━━━━━━━━━━━━━━━━━━━━━
+　撮影種類　：${state.type}
+　日程　　　：${dateStr}
+　時間　　　：${timeStr}
+　お子様　　：${age} / ${count}名
+${note ? '　ご要望　　：' + note + '
+' : ''}━━━━━━━━━━━━━━━━━━━━━━━━
+
+現在は「仮予約」の状態です。
+内容を確認の上、2営業日以内に確定メールをお送りいたします。
+確定メールをもってご予約成立となりますので、今しばらくお待ちください。
+
+ご不明な点がございましたら、お気軽にご連絡ください。
+インスタグラム: @harin_photo
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+harin photo
+https://harinphoto.studio.site/
+━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+  // Owner notification email
+  const ownerSubject = `【新規予約リクエスト】${state.type} - ${clientName}様 ${dateStr}`;
+  const ownerBody =
+`新しい予約リクエストが届きました。
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+　予約内容
+━━━━━━━━━━━━━━━━━━━━━━━━
+　撮影種類　：${state.type}
+　日程　　　：${dateStr}
+　時間　　　：${timeStr}
+━━━━━━━━━━━━━━━━━━━━━━━━
+　お客様情報
+━━━━━━━━━━━━━━━━━━━━━━━━
+　お名前　　：${clientName}（${document.getElementById('f-kana').value}）
+　メール　　：${clientEmail}
+　電話番号　：${document.getElementById('f-tel').value}
+　お子様　　：${age} / ${count}名
+${note ? '　ご要望　　：' + note + '
+' : ''}━━━━━━━━━━━━━━━━━━━━━━━━
+
+Googleカレンダーに仮予約として登録済みです。
+確認後、お客様へ確定メールをお送りください。`;
+
+  const makeMessage = (to, subject, body) => {
+    const str = [
+      'To: ' + to,
+      'From: ' + CONFIG.NOTIFY_EMAIL,
+      'Content-Type: text/plain; charset=UTF-8',
+      'MIME-Version: 1.0',
+      'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=',
+      '',
+      body
+    ].join('\r\n');
+    return btoa(unescape(encodeURIComponent(str)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+
+  try {
+    // Send to client
+    await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + gToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: makeMessage(clientEmail, clientSubject, clientBody) })
+    });
+
+    // Send to owner
+    await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + gToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: makeMessage(CONFIG.NOTIFY_EMAIL, ownerSubject, ownerBody) })
+    });
+  } catch(e) {
+    console.warn('Email send failed:', e);
   }
 }
 </script>
