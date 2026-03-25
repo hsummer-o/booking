@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>撮影予約 | harin photo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --fg: #1a1a1a;
+      --fg2: #6b6b6b;
+      --fg3: #aaa;
+      --bg: #faf9f7;
+      --bg2: #f2f0ed;
+      --border: rgba(0,0,0,0.10);
+      --border2: rgba(0,0,0,0.20);
+      --green: #639922;
+      --red: #D85A30;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 300;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* Header */
+    .site-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .site-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32px;
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      color: var(--fg);
+      text-decoration: none;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .site-sub {
+      font-size: 11px;
+      color: var(--fg2);
+      letter-spacing: 0.12em;
+    }
+
+    /* Step indicator */
+    .steps {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 40px;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .step-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border2);
+      transition: background 0.3s;
+    }
+
+    .step-dot.active { background: var(--fg); }
+    .step-dot.done { background: var(--fg2); }
+
+    .step-line {
+      width: 60px;
+      height: 1px;
+      background: var(--border);
+      margin-top: 3px;
+    }
+
+    .step-label {
+      font-size: 10px;
+      color: var(--fg3);
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; animation: fadeIn 0.25s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Section title */
+    .section-title {
+      font-size: 11px;
+      color: var(--fg2);
+      letter-spacing: 0.10em;
+      margin-bottom: 16px;
+    }
+
+    /* Type selection */
+    .type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .type-btn {
+      padding: 18px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: white;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .type-btn:hover { border-color: var(--border2); background: var(--bg2); }
+
+    .type-btn.selected {
+      border-color: var(--fg);
+      background: var(--fg);
+    }
+
+    .type-btn.selected .type-title { color: white; }
+    .type-btn.selected .type-sub { color: rgba(255,255,255,0.6); }
+
+    .type-title {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--fg);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .type-sub { font-size: 11px; color: var(--fg2); }
+
+    /* Calendar */
+    .gcal-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--fg2);
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--fg3);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .status-dot.ok { background: var(--green); }
+    .status-dot.error { background: var(--red); }
+
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .cal-nav {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--fg2);
+      transition: all 0.15s;
+    }
+
+    .cal-nav:hover { border-color: var(--border2); }
+
+    .cal-month {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 300;
+      letter-spacing: 0.08em;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 20px;
+    }
+
+    .day-name {
+      text-align: center;
+      font-size: 11px;
+      color: var(--fg3);
+      padding: 6px 0;
+    }
+
+    .day-cell {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      position: relative;
+      border: 1px solid transparent;
+      transition: all 0.12s;
+    }
+
+    .day-cell.empty { cursor: default; }
+
+    .day-cell.past,
+    .day-cell.sunday { color: var(--fg3); cursor: default; }
+
+    .day-cell.available {
+      cursor: pointer;
+      background: white;
+      border-color: var(--border);
+    }
+
+    .day-cell.available:hover {
+      border-color: var(--border2);
+      background: var(--bg2);
+    }
+
+    .day-cell.partial {
+      cursor: pointer;
+      background: white;
+      border-color: var(--border);
+    }
+
+    .day-cell.partial:hover {
+      border-color: var(--border2);
+    }
+
+    .day-cell.busy-full {
+      color: var(--fg3);
+      text-decoration: line-through;
+      cursor: not-allowed;
+    }
+
+    .day-cell.selected {
+      background: var(--fg) !important;
+      color: white !important;
+      border-color: var(--fg) !important;
+    }
+
+    .day-cell.today { font-weight: 400; }
+
+    .avail-dot {
+      position: absolute;
+      bottom: 3px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+    }
+
+    .avail-dot.green { background: var(--green); }
+    .avail-dot.red { background: var(--red); }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      font-size: 11px;
+      color: var(--fg2);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    /* Time slots */
+    .time-section {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .time-btn {
+      padding: 12px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      font-size: 13px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.12s;
+      color: var(--fg);
+    }
+
+    .time-btn:hover:not(:disabled) {
+      border-color: var(--border2);
+      background: var(--bg2);
+    }
+
+    .time-btn.selected {
+      background: var(--fg);
+      color: white;
+      border-color: var(--fg);
+    }
+
+    .time-btn:disabled {
+      color: var(--fg3);
+      text-decoration: line-through;
+      cursor: not-allowed;
+      background: var(--bg);
+    }
+
+    /* Form */
+    .form-group { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      color: var(--fg2);
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .required::after {
+      content: ' *';
+      color: var(--red);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 300;
+      background: white;
+      color: var(--fg);
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--fg);
+    }
+
+    textarea { resize: vertical; min-height: 90px; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%;
+      padding: 15px;
+      background: var(--fg);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 400;
+      letter-spacing: 0.10em;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary:hover:not(:disabled) { opacity: 0.8; }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 11px 22px;
+      font-size: 13px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-weight: 300;
+      cursor: pointer;
+      color: var(--fg2);
+      transition: all 0.12s;
+    }
+
+    .btn-secondary:hover { border-color: var(--border2); color: var(--fg); }
+
+    .nav-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 28px;
+    }
+
+    /* Summary */
+    .summary-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .summary-row:last-child { border-bottom: none; }
+    .summary-label { color: var(--fg2); white-space: nowrap; }
+    .summary-value { text-align: right; }
+
+    .note-text {
+      font-size: 12px;
+      color: var(--fg2);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    /* Google sign-in */
+    .google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-family: 'Noto Sans JP', sans-serif;
+      cursor: pointer;
+      color: var(--fg);
+      transition: all 0.15s;
+      margin-bottom: 16px;
+    }
+
+    .google-btn:hover { border-color: var(--border2); background: var(--bg2); }
+
+    .google-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Success */
+    .success-wrap {
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    .success-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--bg2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 22px;
+    }
+
+    .success-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26px;
+      font-weight: 300;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    .success-body {
+      font-size: 13px;
+      color: var(--fg2);
+      line-height: 1.9;
+      margin-bottom: 32px;
+    }
+
+    .contact-note {
+      font-size: 11px;
+      color: var(--fg3);
+      letter-spacing: 0.04em;
+    }
+
+    /* Loading */
+    .loading { text-align: center; padding: 32px; font-size: 13px; color: var(--fg2); }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 1.5px solid var(--border2);
+      border-top-color: var(--fg);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Auth wall */
+    .auth-wall {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .auth-wall h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    .auth-wall p {
+      font-size: 13px;
+      color: var(--fg2);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 480px) {
+      .type-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .time-grid { grid-template-columns: repeat(2, 1fr); }
+      .step-line { width: 30px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header class="site-header">
+    <a class="site-logo" href="https://harinphoto.studio.site/">harin photo</a>
+    <p class="site-sub">撮影のご予約</p>
+  </header>
+
+  <!-- Step indicator -->
+  <div class="steps" id="steps">
+    <div class="step-item">
+      <div class="step-dot active" id="dot-1"></div>
+      <div class="step-label">撮影種類</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-label">日程</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-3"></div>
+      <div class="step-label">お客様情報</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-4"></div>
+      <div class="step-label">確認・送信</div>
+    </div>
+  </div>
+
+  <!-- Step 1: Type -->
+  <div class="panel active" id="panel-1">
+    <p class="section-title">撮影の種類を選択してください</p>
+    <div class="type-grid">
+      <button class="type-btn" onclick="selectType('七五三', this)">
+        <span class="type-title">七五三</span>
+        <span class="type-sub">3歳・5歳・7歳のお参り</span>
+      </button>
+      <button class="type-btn" onclick="selectType('お宮参り', this)">
+        <span class="type-title">お宮参り</span>
+        <span class="type-sub">生後1ヶ月頃の神社参拝</span>
+      </button>
+      <button class="type-btn" onclick="selectType('ニューボーン', this)">
+        <span class="type-title">ニューボーン</span>
+        <span class="type-sub">生後2〜3週間</span>
+      </button>
+      <button class="type-btn" onclick="selectType('家族写真', this)">
+        <span class="type-title">家族写真</span>
+        <span class="type-sub">ご家族のポートレート</span>
+      </button>
+    </div>
+    <button class="btn-primary" id="btn-1" onclick="goStep(2)" disabled>次へ</button>
+  </div>
+
+  <!-- Step 2: Calendar -->
+  <div class="panel" id="panel-2">
+
+    <div id="auth-wall" class="auth-wall" style="display:none;">
+      <h3>空き状況を確認</h3>
+      <p>Googleアカウントでサインインすると、<br>リアルタイムの空き状況をご確認いただけます。</p>
+      <button class="google-btn" onclick="signIn()">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Googleでサインイン
+      </button>
+    </div>
+
+    <div id="cal-area">
+      <div class="gcal-status">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-msg">Google カレンダーに接続中...</span>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div><span>空きあり</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div><span>予約済（一部）</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--fg3)"></div><span>対応不可</span></div>
+      </div>
+
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+        <span class="cal-month" id="cal-month"></span>
+        <button class="cal-nav" onclick="changeMonth(1)">›</button>
+      </div>
+
+      <div class="cal-grid" id="cal-day-names"></div>
+      <div class="cal-grid" id="cal-grid"></div>
+
+      <div class="time-section" id="time-section">
+        <p class="section-title" id="time-label"></p>
+        <div class="time-grid" id="time-grid"></div>
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="goStep(1)">戻る</button>
+      <button class="btn-primary" id="btn-2" onclick="goStep(3)" disabled style="width:auto;padding:11px 28px;">次へ</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Form -->
+  <div class="panel" id="panel-3">
+    <p class="section-title">お客様情報</p>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="required">お名前</label>
+        <input type="text" id="f-name" placeholder="山田 花子" oninput="checkForm()">
+      </div>
+      <div class="form-group">
+        <label class="required">フリガナ</label>
+        <input type="text" id="f-kana" placeholder="ヤマダ ハナコ" oninput="checkForm()">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="required">メールアドレス</label>
+      <input type="email" id="f-email" placeholder="example@email.com" oninput="checkForm()">
+    </div>
+
+    <div class="form-group">
+      <label class="required">電話番号</label>
+      <input type="tel" id="f-tel" placeholder="090-0000-0000" oninput="checkForm()">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="required">お子様の年齢・月齢</label>
+        <input type="text" id="f-age" placeholder="3歳 / 7ヶ月" oninput="checkForm()">
+      </div>
+      <div class="form-group">
+        <label class="required">お子様の人数</label>
+        <select id="f-count" onchange="checkForm()">
+          <option value="">選択してください</option>
+          <option value="1">1名</option>
+          <option value="2">2名</option>
+          <option value="3">3名</option>
+          <option value="4">4名以上</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>ご要望・ご質問（任意）</label>
+      <textarea id="f-note" placeholder="神社のご希望、衣装持込のご相談など、お気軽にご記入ください"></textarea>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="goStep(2)">戻る</button>
+      <button class="btn-primary" id="btn-3" onclick="goStep(4)" disabled style="width:auto;padding:11px 28px;">次へ</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Confirm -->
+  <div class="panel" id="panel-4">
+    <p class="section-title">予約内容のご確認</p>
+
+    <div class="summary-card">
+      <div class="summary-row">
+        <span class="summary-label">撮影種類</span>
+        <span class="summary-value" id="s-type"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">日程</span>
+        <span class="summary-value" id="s-date"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">時間</span>
+        <span class="summary-value" id="s-time"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">お名前</span>
+        <span class="summary-value" id="s-name"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">メール</span>
+        <span class="summary-value" id="s-email"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">電話番号</span>
+        <span class="summary-value" id="s-tel"></span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-label">お子様</span>
+        <span class="summary-value" id="s-child"></span>
+      </div>
+      <div class="summary-row" id="s-note-row" style="display:none">
+        <span class="summary-label">ご要望</span>
+        <span class="summary-value" id="s-note" style="max-width:65%;font-size:12px;line-height:1.6"></span>
+      </div>
+    </div>
+
+    <p class="note-text">
+      上記内容でご予約リクエストを送信します。<br>
+      ご確認後、2営業日以内にメールにてご連絡いたします。<br>
+      ご予約の確定は確認メール送付をもってお知らせします。
+    </p>
+
+    <div id="submit-error" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px;"></div>
+
+    <div class="nav-row">
+      <button class="btn-secondary" onclick="goStep(3)">戻る</button>
+      <button class="btn-primary" id="btn-submit" onclick="submitBooking()" style="width:auto;padding:11px 32px;">予約リクエストを送信</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Success -->
+  <div class="panel" id="panel-5">
+    <div class="success-wrap">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">送信完了</h2>
+      <p class="success-body">
+        予約リクエストを受け付けました。<br>
+        <strong id="confirm-email" style="font-weight:400;"></strong> 宛に<br>
+        確認メールをお送りしました。<br><br>
+        2営業日以内にご連絡いたします。
+      </p>
+      <p class="contact-note">
+        お急ぎの場合はインスタグラム（@harin_photo）よりDMください。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+// ============================================================
+// CONFIG — ここを書き換えてください
+// ============================================================
+const CONFIG = {
+  CLIENT_ID: '133845883047-58hu1apa7dj3tmv4ct284jrqbo2d73dg.apps.googleusercontent.com',
+  // Google Calendarの「ブロックする時間帯」=予約不可として読み込む対象カレンダーID
+  // 通常は 'primary' でOK（メインのGoogleカレンダー）
+  CALENDAR_ID: 'primary',
+
+  // 撮影可能な時間帯（24h表記）
+  AVAILABLE_HOURS: [9, 10, 11, 13, 14, 15],
+
+  // 撮影所要時間（分）
+  DURATION_MINUTES: 120,
+
+  // 予約リクエストの通知先メール（Summer's email）
+  NOTIFY_EMAIL: 'halimkarin@gmail.com',
+
+  // 予約受付可能な最大先日数
+  MAX_DAYS_AHEAD: 120,
+};
+// ============================================================
+
+const DAYS_JP = ['日','月','火','水','木','金','土'];
+const MONTHS_JP = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+let gToken = null;
+let busyMap = {}; // dateKey → [hour, hour, ...]
+let calLoaded = false;
+
+let state = {
+  type: null,
+  year: new Date().getFullYear(),
+  month: new Date().getMonth(),
+  selectedDate: null,
+  selectedTime: null,
+};
+
+// ---- Step navigation ----
+function goStep(n) {
+  [1,2,3,4,5].forEach(i => {
+    document.getElementById(`panel-${i}`).classList.toggle('active', i===n);
+  });
+  [1,2,3,4].forEach(i => {
+    const d = document.getElementById(`dot-${i}`);
+    if (d) {
+      d.classList.toggle('active', i===n);
+      d.classList.toggle('done', i<n);
+    }
+  });
+  if (n===2 && !calLoaded) initCalendarStep();
+  if (n===4) fillSummary();
+  window.scrollTo(0,0);
+}
+
+// ---- Step 1 ----
+function selectType(type, el) {
+  state.type = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('btn-1').disabled = false;
+}
+
+// ---- Google Sign-in ----
+function initGSI() {
+  if (typeof google === 'undefined') return;
+  google.accounts.id.initialize({
+    client_id: CONFIG.CLIENT_ID,
+    callback: handleCredential,
+    auto_select: false,
+  });
+}
+
+function signIn() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+    callback: (resp) => {
+      if (resp.error) { showStatus('error', 'サインインに失敗しました'); return; }
+      gToken = resp.access_token;
+      document.getElementById('auth-wall').style.display = 'none';
+      loadCalendarEvents();
+    },
+  });
+  client.requestAccessToken();
+}
+
+// ---- Calendar Step ----
+function initCalendarStep() {
+  // Check if GSI is ready
+  if (typeof google !== 'undefined' && CONFIG.CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
+    initGSI();
+    // Try silent token first
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: CONFIG.CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+      prompt: '',
+      callback: (resp) => {
+        if (resp.error) {
+          document.getElementById('auth-wall').style.display = 'block';
+          showStatus('error', 'Googleアカウントでサインインしてください');
+          return;
+        }
+        gToken = resp.access_token;
+        loadCalendarEvents();
+      },
+    });
+    client.requestAccessToken();
+  } else {
+    // Demo mode
+    loadDemoData();
+  }
+}
+
+function showStatus(type, msg) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot ' + (type==='ok'?'ok':type==='error'?'error':'');
+  document.getElementById('status-msg').textContent = msg;
+}
+
+// ---- Fetch busy slots from Google Calendar ----
+async function loadCalendarEvents() {
+  showStatus('', 'カレンダーを読み込み中...');
+  const now = new Date();
+  const maxDate = new Date(now);
+  maxDate.setDate(maxDate.getDate() + CONFIG.MAX_DAYS_AHEAD);
+
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CONFIG.CALENDAR_ID)}/events?` +
+    new URLSearchParams({
+      timeMin: now.toISOString(),
+      timeMax: maxDate.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+      maxResults: 250,
+    });
+
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${gToken}` }
+    });
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    processBusy(data.items || []);
+    calLoaded = true;
+    showStatus('ok', 'Google カレンダーと同期済み');
+    renderCalendar();
+  } catch(e) {
+    showStatus('error', '読み込みに失敗しました。再度お試しください。');
+  }
+}
+
+function processBusy(events) {
+  busyMap = {};
+  events.forEach(ev => {
+    if (!ev.start) return;
+    // All-day event → block whole day
+    if (ev.start.date) {
+      const key = ev.start.date;
+      busyMap[key] = 'allday';
+      return;
+    }
+    const start = new Date(ev.start.dateTime);
+    const end = new Date(ev.end.dateTime);
+    const dateKey = toDateKey(start);
+    if (!busyMap[dateKey]) busyMap[dateKey] = [];
+    if (busyMap[dateKey] === 'allday') return;
+    // Block any configured hour that overlaps with this event
+    CONFIG.AVAILABLE_HOURS.forEach(h => {
+      const slotStart = new Date(start.getFullYear(), start.getMonth(), start.getDate(), h, 0);
+      const slotEnd = new Date(slotStart.getTime() + CONFIG.DURATION_MINUTES * 60000);
+      if (slotStart < end && slotEnd > start) {
+        if (!busyMap[dateKey].includes(h)) busyMap[dateKey].push(h);
+      }
+    });
+  });
+}
+
+function toDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ---- Demo mode (no Google account) ----
+function loadDemoData() {
+  busyMap = {};
+  const today = new Date();
+  [2,5,9,13,17].forEach(offset => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + offset);
+    if (d.getDay()===0) return;
+    const key = toDateKey(d);
+    busyMap[key] = offset % 2 === 0 ? [9,10] : 'allday';
+  });
+  calLoaded = true;
+  showStatus('ok', 'デモモード（実際の空き状況は接続後に表示）');
+  renderCalendar();
+}
+
+// ---- Render calendar ----
+function renderCalendar() {
+  const { year, month } = state;
+  document.getElementById('cal-month').textContent = `${year}年 ${MONTHS_JP[month]}`;
+
+  const dayNames = document.getElementById('cal-day-names');
+  dayNames.innerHTML = DAYS_JP.map(d => `<div class="day-name">${d}</div>`).join('');
+
+  const grid = document.getElementById('cal-grid');
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const today = new Date();
+  const todayKey = toDateKey(today);
+  const maxDate = new Date(today);
+  maxDate.setDate(today.getDate() + CONFIG.MAX_DAYS_AHEAD);
+
+  let html = '';
+  for (let i=0; i<firstDay; i++) html += '<div class="day-cell empty"></div>';
+
+  for (let d=1; d<=daysInMonth; d++) {
+    const cellDate = new Date(year, month, d);
+    const key = toDateKey(cellDate);
+    const isSun = cellDate.getDay()===0;
+    const isPast = cellDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const isTooFar = cellDate > maxDate;
+    const isSelected = key === state.selectedDate;
+    const busy = busyMap[key];
+
+    let cls = 'day-cell';
+    let dot = '';
+
+    if (isPast || isSun || isTooFar) {
+      cls += ' past';
+    } else if (busy === 'allday') {
+      cls += ' busy-full';
+      dot = '<div class="avail-dot red"></div>';
+    } else if (busy && busy.length >= CONFIG.AVAILABLE_HOURS.length) {
+      cls += ' busy-full';
+      dot = '<div class="avail-dot red"></div>';
+    } else if (busy && busy.length > 0) {
+      cls += ' partial available';
+      dot = '<div class="avail-dot green"></div>';
+    } else {
+      cls += ' available';
+      dot = '<div class="avail-dot green"></div>';
+    }
+
+    if (isSelected) cls += ' selected';
+    if (key === todayKey) cls += ' today';
+
+    const clickable = !isPast && !isSun && !isTooFar && busy !== 'allday' &&
+                      !(busy && busy.length >= CONFIG.AVAILABLE_HOURS.length);
+    html += `<div class="${cls}" ${clickable?`onclick="selectDate('${key}',${cellDate.getDay()})"`:''}>${d}${dot}</div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function selectDate(key, dow) {
+  state.selectedDate = key;
+  state.selectedTime = null;
+  document.getElementById('btn-2').disabled = true;
+  renderCalendar();
+
+  const parts = key.split('-');
+  document.getElementById('time-label').textContent =
+    `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日（${DAYS_JP[dow]}）の時間帯`;
+
+  const busyHours = busyMap[key] || [];
+  const html = CONFIG.AVAILABLE_HOURS.map(h => {
+    const isBusy = busyHours !== 'allday' && busyHours.includes(h);
+    const label = `${h}:00`;
+    return `<button class="time-btn" ${isBusy?'disabled':''} onclick="selectTime('${label}',this)">${label}</button>`;
+  }).join('');
+
+  document.getElementById('time-grid').innerHTML = html;
+  document.getElementById('time-section').style.display = 'block';
+}
+
+function selectTime(time, el) {
+  state.selectedTime = time;
+  document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('btn-2').disabled = false;
+}
+
+function changeMonth(dir) {
+  state.month += dir;
+  if (state.month > 11) { state.month=0; state.year++; }
+  if (state.month < 0) { state.month=11; state.year--; }
+  state.selectedDate = null;
+  state.selectedTime = null;
+  document.getElementById('time-section').style.display = 'none';
+  document.getElementById('btn-2').disabled = true;
+  renderCalendar();
+}
+
+// ---- Step 3: Form ----
+function checkForm() {
+  const ok = ['f-name','f-kana','f-email','f-tel','f-age','f-count']
+    .every(id => document.getElementById(id).value.trim());
+  document.getElementById('btn-3').disabled = !ok;
+}
+
+// ---- Step 4: Summary ----
+function fillSummary() {
+  const parts = state.selectedDate.split('-');
+  document.getElementById('s-type').textContent = state.type;
+  document.getElementById('s-date').textContent =
+    `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+  document.getElementById('s-time').textContent = state.selectedTime;
+  document.getElementById('s-name').textContent =
+    `${document.getElementById('f-name').value}（${document.getElementById('f-kana').value}）`;
+  document.getElementById('s-email').textContent = document.getElementById('f-email').value;
+  document.getElementById('s-tel').textContent = document.getElementById('f-tel').value;
+  document.getElementById('s-child').textContent =
+    `${document.getElementById('f-age').value} / ${document.getElementById('f-count').value}名`;
+  const note = document.getElementById('f-note').value;
+  document.getElementById('s-note-row').style.display = note ? 'flex' : 'none';
+  document.getElementById('s-note').textContent = note;
+}
+
+// ---- Submit: Create Google Calendar event ----
+async function submitBooking() {
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+  document.getElementById('submit-error').style.display = 'none';
+
+  const name = document.getElementById('f-name').value;
+  const email = document.getElementById('f-email').value;
+  const tel = document.getElementById('f-tel').value;
+  const age = document.getElementById('f-age').value;
+  const count = document.getElementById('f-count').value;
+  const note = document.getElementById('f-note').value;
+
+  const parts = state.selectedDate.split('-');
+  const hour = parseInt(state.selectedTime.split(':')[0]);
+  const startDT = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), hour, 0);
+  const endDT = new Date(startDT.getTime() + CONFIG.DURATION_MINUTES * 60000);
+
+  const event = {
+    summary: `【予約リクエスト】${state.type} - ${name}様`,
+    description: [
+      `撮影種類: ${state.type}`,
+      `お名前: ${name}（${document.getElementById('f-kana').value}）`,
+      `メール: ${email}`,
+      `電話: ${tel}`,
+      `お子様: ${age} / ${count}名`,
+      note ? `ご要望: ${note}` : '',
+      '',
+      '※ このイベントは予約リクエストです。確定後にご連絡ください。',
+    ].filter(Boolean).join('\n'),
+    start: { dateTime: startDT.toISOString(), timeZone: 'Asia/Tokyo' },
+    end: { dateTime: endDT.toISOString(), timeZone: 'Asia/Tokyo' },
+    colorId: '5', // banana (pending)
+    attendees: [{ email }],
+    status: 'tentative',
+  };
+
+  try {
+    if (gToken) {
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CONFIG.CALENDAR_ID)}/events`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${gToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(event),
+        }
+      );
+      if (!res.ok) throw new Error('Calendar API error');
+    }
+    // Success
+    document.getElementById('confirm-email').textContent = email;
+    goStep(5);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '予約リクエストを送信';
+    const err = document.getElementById('submit-error');
+    err.style.display = 'block';
+    err.textContent = '送信に失敗しました。お手数ですが、インスタグラムよりご連絡ください。';
+  }
+}
+</script>
+</body>
+</html>
