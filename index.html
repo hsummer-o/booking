@@ -665,7 +665,7 @@
     <p style="margin-top:10px; font-size:11px; color:var(--fg3); letter-spacing:0.06em;">
       <a href="preset.html" target="_blank"
          style="color:var(--fg2); text-decoration:none; border-bottom:1px solid var(--border2); padding-bottom:1px;">
-        プリセット販売はこちら →　（近日公開予定）
+        プリセット販売はこちら →
       </a>
     </p>
   </header>
@@ -858,6 +858,18 @@
       </p>
     </div>
 
+    <div class="form-group" id="coupon-group">
+      <label>クーポンコード（任意）</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="f-coupon" placeholder="例：SUMMER0607"
+               style="flex:1; text-transform:uppercase;"
+               oninput="resetCoupon()">
+        <button class="btn-secondary" onclick="applyCoupon()"
+                style="white-space:nowrap; padding:11px 18px;">適用</button>
+      </div>
+      <p id="coupon-msg" style="font-size:12px; margin-top:6px;"></p>
+    </div>
+
     <div class="nav-row">
       <button class="btn-secondary" onclick="goStep(2)">戻る</button>
       <button class="btn-primary" id="btn-3" onclick="tryGoStep4()" disabled style="width:auto;padding:11px 28px;">次へ</button>
@@ -909,8 +921,20 @@
         <span class="summary-label">2枠目</span>
         <span class="summary-value" id="s-second-time"></span>
       </div>
+      <div class="summary-row" id="s-coupon-row" style="display:none">
+        <span class="summary-label">クーポン</span>
+        <span class="summary-value" id="s-coupon"></span>
+      </div>
+      <div class="summary-row" id="s-regular-price-row" style="display:none">
+        <span class="summary-label">通常価格</span>
+        <span class="summary-value" id="s-regular-price" style="color:var(--fg2);text-decoration:line-through;"></span>
+      </div>
+      <div class="summary-row" id="s-discount-row" style="display:none">
+        <span class="summary-label" id="s-discount-label">割引</span>
+        <span class="summary-value" id="s-discount" style="color:var(--red);font-weight:400;"></span>
+      </div>
       <div class="summary-row" id="s-price-row">
-        <span class="summary-label">撮影料金</span>
+        <span class="summary-label" id="s-price-label">撮影料金</span>
         <span class="summary-value" id="s-price">¥30,000（税込）</span>
       </div>
       <div class="summary-row" id="s-note-row" style="display:none">
@@ -974,6 +998,24 @@ const CONFIG = {
   AVAILABLE_HOURS: [9, 10, 11, 13, 14, 15],
   DURATION_MINUTES: 60,
   MAX_DAYS_AHEAD: 120,
+  COUPONS: {
+    'HARIN0701': {
+      label:        '夏のキャンペーン',
+      validFrom:    '2025-07-01',
+      validTo:      '2025-07-31',
+      weekdayPrice: 20000,
+      weekendPrice: 25000,
+      active: true,
+    },
+    'SUMMER0607': {
+      label:        '夏のキャンペーン',
+      validFrom:    '2025-06-07',
+      validTo:      '2025-08-31',
+      weekdayPrice: 20000,
+      weekendPrice: 25000,
+      active: true,
+    },
+  },
 };
 
 const DAYS_JP = ['日','月','火','水','木','金','土'];
@@ -990,6 +1032,9 @@ let state = {
   selectedTime: null,
   secondTime: null,
   isConsult: false,
+  couponCode:    null,
+  couponApplied: false,
+  appliedPrice:  null,
 };
 
 // ---- Step navigation ----
@@ -1324,13 +1369,50 @@ function fillSummary() {
   const s2price = document.getElementById('s-price-row');
   if (state.secondTime) {
     document.getElementById('s-second-time').textContent = state.secondTime;
-    document.getElementById('s-price').textContent = '¥60,000（税込）';
     if (s2row) s2row.style.display = 'flex';
     if (s2price) s2price.style.display = 'flex';
   } else {
-    document.getElementById('s-price').textContent = '¥30,000（税込）';
     if (s2row) s2row.style.display = 'none';
     if (s2price) s2price.style.display = 'flex';
+  }
+
+  // 料金（クーポン対応）
+  const normalPrice = 30000;
+  const slots       = state.secondTime ? 2 : 1;
+
+  // クーポン行の表示制御
+  const couponRow = document.getElementById('s-coupon-row');
+  if (couponRow) {
+    couponRow.style.display = state.couponApplied ? 'flex' : 'none';
+    document.getElementById('s-coupon').textContent = state.couponCode;
+  }
+
+  if (state.couponApplied && state.appliedPrice != null) {
+    const discountPerSlot = normalPrice - state.appliedPrice;
+    const totalDiscount   = discountPerSlot * slots;
+    const totalNormal     = normalPrice * slots;
+    const totalFinal      = state.appliedPrice * slots;
+    const couponDef       = CONFIG.COUPONS[state.couponCode] || {};
+
+    // 通常価格行
+    document.getElementById('s-regular-price-row').style.display = 'flex';
+    document.getElementById('s-regular-price').textContent = `¥${totalNormal.toLocaleString()}（税込）`;
+
+    // 割引行
+    document.getElementById('s-discount-row').style.display = 'flex';
+    document.getElementById('s-discount-label').textContent = `割引（${couponDef.label || 'キャンペーン'}）`;
+    document.getElementById('s-discount').textContent = `-¥${totalDiscount.toLocaleString()}`;
+
+    // キャンペーン後価格
+    document.getElementById('s-price-label').textContent = 'キャンペーン価格';
+    document.getElementById('s-price').textContent = `¥${totalFinal.toLocaleString()}（税込）`;
+  } else {
+    const total = normalPrice * slots;
+
+    document.getElementById('s-regular-price-row').style.display = 'none';
+    document.getElementById('s-discount-row').style.display = 'none';
+    document.getElementById('s-price-label').textContent = '撮影料金';
+    document.getElementById('s-price').textContent = `¥${total.toLocaleString()}（税込）`;
   }
 }
 
@@ -1357,6 +1439,8 @@ async function submitBooking() {
     count: document.getElementById('f-count').value,
     location: getLocation(),
     note: document.getElementById('f-note').value,
+    couponCode:   state.couponCode   || '',
+    appliedPrice: state.appliedPrice || '',
   };
 
   try {
@@ -1382,6 +1466,39 @@ async function submitBooking() {
     err.style.display = 'block';
     err.innerHTML = `送信に失敗しました。お手数ですが、時間をおいて再度お試しいただくか、<br>メール（<a href="mailto:harin.photograph@gmail.com" style="color:var(--red);">harin.photograph@gmail.com</a>）までご連絡ください。<br><small style="color:var(--fg3);">このフォームからの送信を引き続きご利用いただけます。</small>`;
   }
+}
+
+// ---- クーポン判定 ----
+function applyCoupon() {
+  const code = document.getElementById('f-coupon').value.trim().toUpperCase();
+  const msg  = document.getElementById('coupon-msg');
+  const def  = CONFIG.COUPONS[code];
+  if (!def || !def.active) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = '※ このコードは無効です';
+    state.couponApplied = false; state.couponCode = null; state.appliedPrice = null;
+    return;
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  if (today < def.validFrom || today > def.validTo) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = '※ このコードの有効期限が切れています';
+    state.couponApplied = false; state.couponCode = null; state.appliedPrice = null;
+    return;
+  }
+  const dow       = new Date(state.selectedDate + 'T00:00:00').getDay();
+  const isWeekend = (dow === 0 || dow === 6);
+  state.appliedPrice  = isWeekend ? def.weekendPrice : def.weekdayPrice;
+  state.couponApplied = true;
+  state.couponCode    = code;
+  msg.style.color = 'var(--green)';
+  msg.textContent = `✓ ${def.label}が適用されました（¥${state.appliedPrice.toLocaleString()} / 1枠）`;
+}
+
+function resetCoupon() {
+  state.couponApplied = false; state.couponCode = null; state.appliedPrice = null;
+  const msg = document.getElementById('coupon-msg');
+  if (msg) msg.textContent = '';
 }
 
 </script>
