@@ -1479,10 +1479,10 @@ function applyCoupon() {
     state.couponApplied = false; state.couponCode = null; state.appliedPrice = null;
     return;
   }
-  const today = new Date().toISOString().slice(0, 10);
-  if (today < def.validFrom || today > def.validTo) {
+  const shootDate = state.selectedDate;
+  if (!shootDate || shootDate < def.validFrom || shootDate > def.validTo) {
     msg.style.color = 'var(--red)';
-    msg.textContent = '※ このコードの有効期限が切れています';
+    msg.textContent = `※ このコードは撮影日が${def.validFrom}〜${def.validTo}の予約が対象です`;
     state.couponApplied = false; state.couponCode = null; state.appliedPrice = null;
     return;
   }
