@@ -1046,7 +1046,13 @@ function goStep(n) {
       d.classList.toggle('done', i<n);
     }
   });
-  if (n===2 && !calLoaded) initCalendarStep();
+  if (n===2) {
+    if (!calLoaded) initCalendarStep();
+    else if (CONFIG.GAS_URL !== 'YOUR_GAS_DEPLOY_URL') loadCalendarFromGAS(true); // 再訪時は最新の空き状況へ更新
+    startCalAutoRefresh();
+  } else {
+    stopCalAutoRefresh();
+  }
   if (n===3) togglePreferredTimeField();
   if (n===4) fillSummary();
   window.scrollTo(0,0);
@@ -1077,22 +1083,38 @@ function showStatus(type, msg) {
 }
 
 // ---- GASから空き状況を取得 ----
-async function loadCalendarFromGAS() {
-  showStatus('', '空き状況を確認中...');
+async function loadCalendarFromGAS(silent) {
+  if (!silent) showStatus('', '空き状況を確認中...');
   try {
     // GASはGETリクエストでも空き状況を返す（CORSリダイレクト対応）
-    const url = CONFIG.GAS_URL + '?action=getAvailability';
-    const res = await fetch(url, { redirect: 'follow' });
+    // キャッシュバスター付与 + no-store で、ブラウザ/GAS側のキャッシュによる
+    // 古い空き状況の表示を防ぐ
+    const url = CONFIG.GAS_URL + '?action=getAvailability&_=' + Date.now();
+    const res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
     busyMap = data.busyMap || {};
     calLoaded = true;
     showStatus('ok', '空き状況を読み込みました');
     renderCalendar();
+    refreshTimeSlots();
   } catch(e) {
-    showStatus('error', '読み込みに失敗しました。しばらくしてから再度お試しください。');
-    loadDemoData();
+    if (!silent) {
+      showStatus('error', '読み込みに失敗しました。しばらくしてから再度お試しください。');
+      loadDemoData();
+    }
   }
+}
+
+// ---- 表示中は定期的にバックグラウンドで空き状況を更新 ----
+let calRefreshTimer = null;
+function startCalAutoRefresh() {
+  stopCalAutoRefresh();
+  if (CONFIG.GAS_URL === 'YOUR_GAS_DEPLOY_URL') return;
+  calRefreshTimer = setInterval(() => loadCalendarFromGAS(true), 60000);
+}
+function stopCalAutoRefresh() {
+  if (calRefreshTimer) { clearInterval(calRefreshTimer); calRefreshTimer = null; }
 }
 
 // ---- Demo mode ----
@@ -1195,6 +1217,37 @@ function selectDate(key, dow) {
 
   document.getElementById('time-grid').innerHTML = html;
   document.getElementById('time-section').style.display = 'block';
+}
+
+// ---- 選択中の日付があれば、最新のbusyMapで時間帯ボタンを再描画 ----
+// （他の予約が入って選択済みの時間が埋まった場合は選択を解除する）
+function refreshTimeSlots() {
+  if (!state.selectedDate) return;
+  const key = state.selectedDate;
+  const busyHours = busyMap[key] || [];
+
+  if (busyHours === 'allday') {
+    // 丸ごと埋まった場合は選択解除してカレンダーへ戻す
+    state.selectedDate = null;
+    state.selectedTime = null;
+    document.getElementById('btn-2').disabled = true;
+    document.getElementById('time-section').style.display = 'none';
+    return;
+  }
+
+  const html = CONFIG.AVAILABLE_HOURS.map(h => {
+    const isBusy = busyHours.includes && busyHours.includes(h);
+    const label = `${h}:00`;
+    const isSelected = state.selectedTime === label && !isBusy;
+    if (isBusy && state.selectedTime === label) {
+      // 選択済みの時間が他の予約で埋まった場合は選択を解除
+      state.selectedTime = null;
+      document.getElementById('btn-2').disabled = true;
+    }
+    return `<button class="time-btn ${isSelected?'selected':''}" ${isBusy?'disabled':''} onclick="selectTime('${label}',this)">${label}</button>`;
+  }).join('');
+
+  document.getElementById('time-grid').innerHTML = html;
 }
 
 function selectTime(time, el) {
