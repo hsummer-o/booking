@@ -130,6 +130,14 @@ function toDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// ---- 今日の日付で、かつ枠の開始時刻が現在時刻を過ぎているか ----
+function isHourPast(dateKey, h) {
+  const now = new Date();
+  if (dateKey !== toDateKey(now)) return false;
+  const slotStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, 0);
+  return slotStart <= now;
+}
+
 // ---- Render calendar ----
 function renderCalendar() {
   const { year, month } = state;
@@ -152,7 +160,10 @@ function renderCalendar() {
   for (let d=1; d<=daysInMonth; d++) {
     const cellDate = new Date(year, month, d);
     const key = toDateKey(cellDate);
-    const isPast = cellDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const allHoursPastToday = key === todayKey &&
+      CONFIG.AVAILABLE_HOURS.every(h => isHourPast(key, h));
+    const isPast = cellDate < new Date(today.getFullYear(), today.getMonth(), today.getDate()) ||
+      allHoursPastToday;
     const isTooFar = cellDate > maxDate;
     const isSelected = key === state.selectedDate;
     const busy = busyMap[key];
@@ -205,8 +216,9 @@ function selectDate(key, dow) {
   const busyHours = busyMap[key] || [];
   const html = CONFIG.AVAILABLE_HOURS.map(h => {
     const isBusy = busyHours !== 'allday' && busyHours.includes && busyHours.includes(h);
+    const isPast = isHourPast(key, h);
     const label = `${h}:00`;
-    return `<button class="time-btn" ${isBusy?'disabled':''} onclick="selectTime('${label}',this)">${label}</button>`;
+    return `<button class="time-btn" ${(isBusy||isPast)?'disabled':''} onclick="selectTime('${label}',this)">${label}</button>`;
   }).join('');
 
   document.getElementById('time-grid').innerHTML = html;
@@ -231,14 +243,15 @@ function refreshTimeSlots() {
 
   const html = CONFIG.AVAILABLE_HOURS.map(h => {
     const isBusy = busyHours.includes && busyHours.includes(h);
+    const isPast = isHourPast(key, h);
     const label = `${h}:00`;
-    const isSelected = state.selectedTime === label && !isBusy;
-    if (isBusy && state.selectedTime === label) {
-      // 選択済みの時間が他の予約で埋まった場合は選択を解除
+    const isSelected = state.selectedTime === label && !isBusy && !isPast;
+    if ((isBusy || isPast) && state.selectedTime === label) {
+      // 選択済みの時間が他の予約で埋まった、または時間が過ぎた場合は選択を解除
       state.selectedTime = null;
       document.getElementById('btn-2').disabled = true;
     }
-    return `<button class="time-btn ${isSelected?'selected':''}" ${isBusy?'disabled':''} onclick="selectTime('${label}',this)">${label}</button>`;
+    return `<button class="time-btn ${isSelected?'selected':''}" ${(isBusy||isPast)?'disabled':''} onclick="selectTime('${label}',this)">${label}</button>`;
   }).join('');
 
   document.getElementById('time-grid').innerHTML = html;
